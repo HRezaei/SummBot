@@ -1,0 +1,96 @@
+"""
+Container for all sentence metrics
+"""
+import math
+from hazm import *
+
+
+def pos_ratio_based(features, sentence_words):
+    from utilities import tagger
+    tags = tagger.tag(sentence_words)
+    all_count = len(sentence_words)
+    nn_count = sum(1 if tag=='N' else 0 for (w, tag) in tags)
+    ve_count = sum(1 if tag=='V' else 0 for (w, tag) in tags)
+    aj_count = sum(1 if tag=='AJ' or tag=='AJe' else 0 for (w, tag) in tags)
+    av_count = sum(1 if tag=='ADV' else 0 for (w, tag) in tags)
+    features['pos_nn_ratio'] = nn_count/all_count
+    features['pos_ve_ratio'] = ve_count/all_count
+    features['pos_aj_ratio'] = aj_count/all_count
+    features['pos_av_ratio'] = av_count/all_count
+
+
+def frequency_score(sentence_words, word_freq):
+    """
+    Term Frequency measure, average
+    Args:
+        sentence: An array of tokenized words of the sentence
+    """
+    sen_score = 0
+    for sen_word in sentence_words:
+        sen_score = sen_score + word_freq[sen_word]
+    return sen_score / len(sentence_words)
+
+def inverse_sentence_freq(term, sentences):
+    """
+    Computes ISF
+    Args:
+        term: the word for which isf will be calculated
+        sentences: array of all sentences in the text, tokenized and removed stop words
+    """
+    sentences_containing = 0
+    for sen in sentences:
+        if term in sen:
+            sentences_containing = sentences_containing + 1
+    if(sentences_containing == 0): sentences_containing = 1
+    return 1 - (math.log(sentences_containing) / math.log(len(sentences)))
+
+def tf_isf_score(sentence_words, sentences, word_freq):
+    sen_score = 0
+    for sen_word in sentence_words:
+        sen_score = sen_score + word_freq[
+            sen_word] * inverse_sentence_freq(sen_word, sentences)
+    return sen_score
+
+def linear_poition_score(position, total_sentences):
+    return 1 - (position / total_sentences)
+
+def cosine_position_score(position, total_sentences):
+    alpha = 2
+    return (math.cos(
+        (2 * 3.14 * position) / (total_sentences - 1)) + alpha - 1) / alpha
+
+def title_similarity_score(sen, title):
+    denominator = math.sqrt(len(sen) * len(title))
+    if denominator > 0:
+        ratio = len(set(sen).intersection(title)) / denominator
+    else:
+        ratio = 0
+    return ratio
+
+def cosine_similarity(vec1, vec2):
+    """
+    Computes cosine similarity of the given parameters
+    Args:
+        vec1: frequency distribution of a sentence
+        vec2: frequency distribution of a sentence
+    """
+    intersection = set(vec1.keys()) & set(vec2.keys())
+    numerator = sum([vec1[x] * vec2[x] for x in intersection])
+
+    sum1 = sum([vec1[x]**2 for x in vec1.keys()])
+    sum2 = sum([vec2[x]**2 for x in vec2.keys()])
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+
+    if not denominator:
+        return 0.0
+    else:
+        return float(numerator) / denominator
+def cue_words(sentence_words, cue_words):
+    '''
+
+    '''
+    output = 0
+    for word in sentence_words:
+        if word in cue_words:
+            output += 1
+    return output
