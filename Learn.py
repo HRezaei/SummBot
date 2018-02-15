@@ -1,7 +1,7 @@
 from sklearn import tree
 from utilities import *
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 import _pickle as cPickle
 from Summ import summ
@@ -116,9 +116,9 @@ print("Mean squared error: %.5f"
       % mean_squared_error(y_test, y_pred))
 # Explained variance score: 1 is perfect prediction
 print('Variance score: %.5f' % r2_score(y_test, y_pred))
-visualize(y_test, y_pred, "Decision Tree Regression - Test set")
+#visualize(y_test, y_pred, "Decision Tree Regression - Test set")
 
-visualize(y_balanced, y_pred_train, "Decision Tree Regression - Train set")
+#visualize(y_balanced, y_pred_train, "Decision Tree Regression - Train set")
 print("MSE on train: %.5f"
       % mean_squared_error(y_balanced, y_pred_train))
 print('Variance score on train: %.5f' % r2_score(y_balanced, y_pred_train))

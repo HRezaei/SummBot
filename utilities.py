@@ -9,7 +9,7 @@ valid_features = ['cosine_position', 'cue_words', 'tfisf','tf', 'pos_ve_ratio', 
 'pos_av_ratio', 'num_words', 'num_sens']
 '''  '''
 def read_file(path):
-    file = open(path, "r")
+    file = open(path, "r", encoding='utf8')
     content = file.read()
     return content
 

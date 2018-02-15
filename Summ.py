@@ -47,11 +47,22 @@ def summ(text, clf):
 
 #path = 'resources/pasokh/Single-Dataset/Source/DUC/ALF.CU.13910117.019.txt'
 
-'''
-if len(sys.argv) > 1 :
-    with open('my_dumped_regressor.pkl', 'rb') as fid:
+
+if len(sys.argv) > 2 :
+    with open('dtr_regressor.pkl', 'rb') as fid:
         clf = cPickle.load(fid)
-    path = sys.argv[1]
-    s = summ(read_file(path), clf)
-    print(s)
-    '''
+    command = sys.argv[1]
+    s = 'No summary'
+    if command == 'path':
+        path = sys.argv[2]
+        text = read_file(path)
+        print('text len:' + str(len(text)))
+        s = summ(text, clf)
+        file = open(path + '.summ', "w+", encoding='utf8')
+        file.write(s)
+        file.close()
+    elif command == 'text':
+        text = sys.argv[2]
+        s = summ(text, clf)
+        print(s)
+    
