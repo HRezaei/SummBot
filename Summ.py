@@ -56,7 +56,6 @@ if len(sys.argv) > 2 :
     if command == 'path':
         path = sys.argv[2]
         text = read_file(path)
-        print('text len:' + str(len(text)))
         s = summ(text, clf)
         file = open(path + '.summ', "w+", encoding='utf8')
         file.write(s)
