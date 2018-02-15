@@ -1,1 +1,1 @@
-Summarizer
+Summarizer Bot
