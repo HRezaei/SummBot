@@ -9,14 +9,15 @@ from rouge import Rouge
 import json, sys
 from sklearn import linear_model
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.svm import SVR
 from sklearn.preprocessing import StandardScaler
 
 def visualize(y, predicted, title):
     plt.figure()
-    plt.scatter(range(len(y)), y, s=10, edgecolor="black",
+    plt.scatter(range(len(y)), y, s=10, edgecolor="darkorange",
                 c="darkorange", label="train")
-    plt.plot(range(len(y)), predicted, color="cornflowerblue",
-            label="test", linewidth=1)
+    plt.scatter(range(len(y)), predicted, color="cornflowerblue",
+            label="test", linewidth=1, marker='+')
     #plt.plot(X_test, predicted, color="yellowgreen", label="predicted", linewidth=2)
     plt.xlabel("data")
     plt.ylabel("target")
@@ -91,18 +92,25 @@ if len(sys.argv) < 2 or sys.argv[1] == 'dtr':
     #max_depth=6
     regr = tree.DecisionTreeRegressor(max_depth=6)
     regr = regr.fit(X_balanced, y_balanced)
-    export_name = 'dtr_regressor'
+    export_name = 'dtr'
 elif sys.argv[1] == 'linear':
     regr = linear_model.LinearRegression()
     # Train the model using the training sets
     regr.fit(X_balanced, y_balanced)
     # The coefficients
     print('Coefficients: \n', regr.coef_)
-    export_name = 'linear_regressor'
+    export_name = 'linear'
+elif sys.argv[1] == 'svm':
+    regr = SVR(verbose=True, epsilon=0.01)
+    # Train the model using the training sets
+    regr.fit(X_balanced, y_balanced)
+    # The coefficients
+    print('Coefficients: \n', regr.get_params())
+    export_name = 'svm'
 elif sys.argv[1] == 'dummy':
     from DummyRegressor import RndRegressor
     regr = RndRegressor()
-    export_name = 'Dummy'
+    export_name = 'dummy'
 else:
     print("Regression type is undefined")
     exit()

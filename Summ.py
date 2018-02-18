@@ -37,7 +37,7 @@ def summ(text, clf):
     dictv = {i:result[i] for i in range(len(result))}
     ranked = sorted(dictv.items(), key=operator.itemgetter(1), reverse=True)
     #print(ranked)
-    cut = [i for (i,j) in ranked[:5]]
+    cut = [i for (i,j) in ranked[:4]]
     #return cut
     selected = sorted(cut)
     summary = [sentences[i] for i in selected]
@@ -57,11 +57,10 @@ if len(sys.argv) > 2 :
         path = sys.argv[2]
         text = read_file(path)
         s = summ(text, clf)
-        file = open(path + '.summ', "w+", encoding='utf8')
-        file.write(s)
-        file.close()
     elif command == 'text':
         text = sys.argv[2]
         s = summ(text, clf)
-        print(s)
+    f_file = open(path + '.summ', 'w+', encoding='utf8')
+    f_file.writelines(s)
+    f_file.close()
     

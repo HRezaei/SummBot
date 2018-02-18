@@ -85,6 +85,7 @@ def cosine_similarity(vec1, vec2):
         return 0.0
     else:
         return float(numerator) / denominator
+
 def cue_words(sentence_words, cue_words):
     '''
 
