@@ -86,7 +86,12 @@ def build_feature_set():
             gold_summaries[summ]={'sens': [remove_stop_words(word_tokenize(sen)) for sen in summ_sens]}
         
         sentences = sent_tokenize(text)
-        doc_features = {'num_words': len(all_words), 'num_sens': len(sentences)}
+        doc_features = {
+            'num_words': len(all_words),
+            'num_sens': len(sentences),
+            'num_parag': sum([1 for p in text.split('\n') if len(p) > 0]),
+            'category': key[4:6]
+        }
         total_similar = 0
         position = 0
         for sen in sentences:

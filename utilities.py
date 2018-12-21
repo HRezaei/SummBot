@@ -2,13 +2,22 @@ import json, random, nltk
 from hazm import *
 
 all_features = ['cosine_position', 'cue_words', 'tfisf','tf', 'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio',
-'pos_av_ratio', 'num_words', 'num_sens', 'included','target','target_bleu_avg','text','target_bleu','source_file','id' ]
+'pos_av_ratio', 'num_words', 'num_sens', 'included','target','target_bleu_avg','text','target_bleu','source_file','id', 'category' ]
 
 
 valid_features = ['cosine_position', 'cue_words', 'tfisf','tf', 'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio',
-'pos_av_ratio', 'num_words', 'num_sens']
-'''  '''
+'pos_av_ratio'
+   # , 'num_words', 'num_sens', 'num_parag', 'category'
+ ]
 
+category_map = {
+    'PO': 1,
+    'SO': 2,
+    'SP': 3,
+    'CU': 4,
+    'EC': 5,
+    'SC': 6
+}
 def read_file(path):
     file = open(path, "r", encoding='utf8')
     content = file.read()
@@ -22,7 +31,10 @@ def load_dataset(path):
         for (sen, nomatter) in dataset[key]:
             row = []
             for attr in valid_features:
-                row.append(sen[attr])
+                if attr == 'category':
+                    row.append(category_map[sen[attr]])
+                else:
+                    row.append(sen[attr])
             features.append(row)
             target.append(sen['target'])
     return (features, target)

@@ -10,7 +10,11 @@ def sentences_features(text):
     word_freq = FreqDist(all_words)
     #graph_model = build_graph_model()
     sentences = sent_tokenize(text)
-    doc_features = {'num_words': len(all_words), 'num_sens': len(sentences)}
+    doc_features = {
+        'num_words': len(all_words),
+        'num_sens': len(sentences),
+        'num_parag': sum([1 for p in text.split('\n') if len(p) > 0])
+    }
     position = 0
     for position in range(len(sentences)):
         sen = sentences[position]
@@ -23,13 +27,16 @@ def sentences_features(text):
         position += 1
     return (feature_set, sentences)
 
-def summ(text, clf):
+def summ(text, clf, category):
     sens_feats, sentences = sentences_features(text)
     feature_set = []
     for sen in sens_feats:
         row = []
         for attr in valid_features:
-            row.append(sen[attr])
+            if attr == 'category':
+                row.append(category_map[category])
+            else:
+                row.append(sen[attr])
         feature_set.append(row)
 
     result = clf.predict(feature_set)
@@ -45,22 +52,5 @@ def summ(text, clf):
     #    y = result[i]
     return " ".join(summary)
 
-#path = 'resources/pasokh/Single-Dataset/Source/DUC/ALF.CU.13910117.019.txt'
 
 
-if len(sys.argv) > 2 :
-    with open('dtr_regressor.pkl', 'rb') as fid:
-        clf = cPickle.load(fid)
-    command = sys.argv[1]
-    s = 'No summary'
-    if command == 'path':
-        path = sys.argv[2]
-        text = read_file(path)
-        s = summ(text, clf)
-    elif command == 'text':
-        text = sys.argv[2]
-        s = summ(text, clf)
-    f_file = open(path + '.summ', 'w+', encoding='utf8')
-    f_file.writelines(s)
-    f_file.close()
-    

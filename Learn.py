@@ -43,7 +43,7 @@ def evaluate_summarizer(clf):
     for key in datasetJson:
         total_summaries += 1
         text = datasetJson[key]['text']
-        summary = summ(text, clf)
+        summary = summ(text, clf, key[4:6])
         gold_summaries = datasetJson[key]['summaries']
         best_score = empty_score
         for ref_key in gold_summaries:
