@@ -1,7 +1,7 @@
 import nltk, math, operator
 from nltk.probability import FreqDist
 from nltk import bleu
-import re, json, sys
+import json, sys
 from hazm import *
 from rouge import Rouge
 from utilities import *
@@ -10,9 +10,6 @@ import Features
 from fractions import Fraction
 import numpy as np
 
-def remove_stop_words(words):
-    #This should be read once instead of every time this function is caled
-    return [word for word in words if word not in stop_words and re.sub("\s|\u200c", "", word).isalnum()]
 
 
 def add_features(features, sent, all_sentences, word_freq, position):
@@ -154,7 +151,6 @@ from Features import *
 
 
 cue_words = read_file("resources/cue-words.txt").split()
-stop_words = read_file("resources/stop-words.txt").split()
 rouge = Rouge()
 
 

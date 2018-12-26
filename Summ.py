@@ -29,6 +29,13 @@ def sentences_features(text):
 
 def summ(text, clf, category):
     sens_feats, sentences = sentences_features(text)
+    summary_len = 4
+    text_len = len(sentences)
+    if text_len > 30:
+        summary_len = round(text_len/6)
+    elif text_len > 10:
+        summary_len = 5
+
     feature_set = []
     for sen in sens_feats:
         row = []
@@ -44,7 +51,7 @@ def summ(text, clf, category):
     dictv = {i:result[i] for i in range(len(result))}
     ranked = sorted(dictv.items(), key=operator.itemgetter(1), reverse=True)
     #print(ranked)
-    cut = [i for (i,j) in ranked[:4]]
+    cut = [i for (i,j) in ranked[:summary_len]]
     #return cut
     selected = sorted(cut)
     summary = [sentences[i] for i in selected]
