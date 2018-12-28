@@ -28,28 +28,28 @@ def visualize(y, predicted, title):
     plt.show()
 
 
-def evaluate_summarizer(clf,remove_stopwords=False):
-    datasetJson = json.loads(read_file('resources/pasokh/all.json') )
+def evaluate_summarizer(clf, dataset, remove_stopwords=False):
+
     rouge = Rouge()
     empty_score = {
-        'rouge-1':{'p':0, 'f':0, 'r':0},
-        'rouge-2':{'p':0, 'f':0, 'r':0},
-        'rouge-l':{'p':0, 'f':0, 'r':0}
+        'rouge-1': {'p':0, 'f': 0, 'r': 0},
+        'rouge-2': {'p':0, 'f': 0, 'r': 0},
+        'rouge-l': {'p':0, 'f': 0, 'r': 0}
         }
     total_scores = {
-        'rouge-1':{'p':0, 'f':0, 'r':0},
-        'rouge-2':{'p':0, 'f':0, 'r':0},
-        'rouge-l':{'p':0, 'f':0, 'r':0}
+        'rouge-1':{'p': 0, 'f': 0, 'r': 0},
+        'rouge-2':{'p': 0, 'f': 0, 'r': 0},
+        'rouge-l':{'p': 0, 'f': 0, 'r': 0}
         }
     avg_scores = empty_score
     total_summaries = 0
-    for key in datasetJson:
+    for key in dataset:
         total_summaries += 1
-        text = datasetJson[key]['text']
+        text = dataset[key]['text']
         summary = summ(text, clf, key[4:6])
         if remove_stopwords:
             summary = remove_stop_words(summary)
-        gold_summaries = datasetJson[key]['summaries']
+        gold_summaries = dataset[key]['summaries']
         best_score = empty_score
         for ref_key in gold_summaries:
             ref = gold_summaries[ref_key]
@@ -62,7 +62,7 @@ def evaluate_summarizer(clf,remove_stopwords=False):
             for param in best_score[test_type]:
                 total_scores[test_type][param] += best_score[test_type][param]
     
-    total_docs = len(datasetJson) 
+    total_docs = len(dataset)
     for test_type in total_scores:
         for param in total_scores[test_type]:
             avg_scores[test_type][param] = total_scores[test_type][param]/total_summaries
@@ -123,7 +123,7 @@ print("Train set size: {}".format(len(X_balanced)))
 print("Test set size: {}".format(len(X_test)))
 print("Used features: {}".format(len(X_balanced[0])))
 
-
+dataset_json = json.loads(read_file('resources/pasokh/all.json'))
 for model_type in ['dummy', 'dtr', 'linear', 'svm']:
     print('**********************' + model_type + '**********************')
     if model_type == 'dtr':
@@ -158,5 +158,5 @@ for model_type in ['dummy', 'dtr', 'linear', 'svm']:
     evaluate_model(regr)
 
     print('Summarizing dataset and evaluating Rouge...')
-    evaluate_summarizer(regr, True)
+    evaluate_summarizer(regr, dataset_json, True)
     print('*****************************************************************************')

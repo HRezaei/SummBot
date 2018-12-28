@@ -1,14 +1,16 @@
-import json, random, re
+import json, random, re, hashlib
 from hazm import *
 
 all_features = ['cosine_position', 'cue_words', 'tfisf', 'tf', 'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio',
-'pos_av_ratio', 'num_words', 'num_sens', 'included', 'target', 'target_bleu_avg', 'text', 'target_bleu', 'source_file', 'id', 'category' ]
+                'pos_av_ratio', 'doc_words', 'doc_sens', 'included', 'target', 'target_bleu_avg', 'text',
+                'target_bleu', 'source_file', 'id', 'category', 'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns']
 
 
 valid_features = ['cosine_position', 'cue_words', 'tfisf',
-                  # 'tf',
+                   'tf',
                   'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio', 'pos_av_ratio',
-     'num_words', 'num_sens', 'num_parag', 'category'
+     'doc_words', 'doc_sens' , 'doc_parag', 'category',
+                  'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns'
  ]
 
 category_map = {
@@ -70,6 +72,9 @@ def balance_dataset(X_train, y_train, ratio):
 
 
 def remove_stop_words(words):
+    hash_key = hashlib.md5(str(words).encode('utf-8')).hexdigest()
+    if hash_key in remove_stop_words.cache:
+        return remove_stop_words.cache[hash_key]
     is_string = isinstance(words, str)
     if is_string:
         words = word_tokenize(words)
@@ -78,6 +83,7 @@ def remove_stop_words(words):
     if is_string:
         return ' '.join(removed)
     return removed
+remove_stop_words.cache = {}
 
 
 def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):

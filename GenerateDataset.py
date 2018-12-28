@@ -1,7 +1,7 @@
 import nltk, math, operator
 from nltk.probability import FreqDist
 from nltk import bleu
-import json, sys
+import json, sys, hashlib
 from hazm import *
 from rouge import Rouge
 from utilities import *
@@ -12,13 +12,12 @@ import numpy as np
 
 
 
-def add_features(features, sent, all_sentences, word_freq, position):
+def add_features(features, sent, all_sentences_tokenized, word_freq, position):
     '''
     Args:
         sent: array of words
     '''
-    total_sentences = len(all_sentences)
-    all_sentences_tokenized = [remove_stop_words(word_tokenize(sen)) for sen in all_sentences]
+    total_sentences = len(all_sentences_tokenized)
     features["tfisf"] = Features.tf_isf_score(sent, all_sentences_tokenized, word_freq)
     features["cosine_position"] = Features.cosine_position_score(position, total_sentences)
     features["tf"] = Features.frequency_score(sent, word_freq)
@@ -58,60 +57,16 @@ def avg_bleu_score(sen, summaries, avg=False):
 def build_feature_set():
     datasetJson = read_file('resources/pasokh/all.json') 
     pasokh = json.loads(datasetJson)
-    total_similar = 0
-    p = 0
-    id = 0
     output = {}
     for key in pasokh:
-        feature_set = []
         doc = pasokh[key]
         text = doc["text"]
         #title = doc["title"]
-        all_words = word_tokenize(text)
-        all_words = remove_stop_words(all_words)
-        word_freq = FreqDist(all_words)
-        #graph_model = build_graph_model()
-        #No matter who has summarized this text, we only used one summary
-        #key, summary = doc["summaries"].popitem()
-        normalized_summaries = []
-        gold_summaries = {}
-        for summ in doc['summaries']:
-            summary = normalizer.normalize(doc['summaries'][summ])
-            #word tokenized summaries for computing bleu scores:
-            normalized_summaries.append(summary.split())
-            summ_sens = sent_tokenize(summary)
-            gold_summaries[summ]={'sens': [remove_stop_words(word_tokenize(sen)) for sen in summ_sens]}
-        
-        sentences = sent_tokenize(text)
-        doc_features = {
-            'num_words': len(all_words),
-            'num_sens': len(sentences),
-            'num_parag': sum([1 for p in text.split('\n') if len(p) > 0]),
-            'category': key[4:6]
-        }
-        total_similar = 0
-        position = 0
-        for sen in sentences:
-            id += 1
-            sen = normalizer.normalize(sen)
-            words = remove_stop_words(word_tokenize(sen))
-            if len(words) < 1: continue
-
-            features = doc_features.copy()
-            add_features(features, words, sentences, word_freq, position)
-            features['target_bleu'] = avg_bleu_score(sen.split(), normalized_summaries)
-            features['target_bleu_avg'] = avg_bleu_score(sen.split(), normalized_summaries, True)
-            features['id'] = id
-            features['target'] = average_similarity(words, gold_summaries)
-            included = (features['target'] > 0.5)
-            features['included'] = included
-            features['source_file'] = key
-            features['text'] = sen
-            feature_set.append((features, included))
-            position += 1
+        feature_set, tmp = document_feature_set(text, key, doc['summaries'])
         output[key.replace(".", "")] = feature_set   
-        #break
+
     return output
+
 
 def average_similarity(sen, gold_summaries):
     total_similarity = 0
@@ -125,27 +80,92 @@ def average_similarity(sen, gold_summaries):
     return total_similarity/len(gold_summaries)
                 
 
-
 def encode_complex(obj):
     if isinstance(obj, Fraction):
         return obj.numerator/ obj.denominator
     raise TypeError(repr(obj) + " is not JSON serializable")
 
 
+def document_feature_set(text, category, golden_summaries=[], key=''):
+    hash_key = hashlib.md5((text+category).encode('utf-8')).hexdigest()
+    if hash_key in document_feature_set.cache:
+        return document_feature_set.cache[hash_key]
+    feature_set = []
+    sentence_words = []
+    tagged_sentences = []
+    num_verbs = 0  # in doc
+    num_nouns = 0
+    num_advbs = 0
+    num_adjcs = 0
 
-'''
-stemmer = Stemmer()
-stemmer.stem('کتاب‌ها')
-'کتاب'
-lemmatizer = Lemmatizer()
-lemmatizer.lemmatize('می‌روم')
-'رفت#رو'
+    all_words = word_tokenize(text)
+    all_words = remove_stop_words(all_words)
+    word_freq = FreqDist(all_words)
 
-tagger = POSTagger(model='resources/postagger.model')
-tafs = tagger.tag(word_tokenize('ما بسیار کتاب می‌خوانیم'))
-[('ما', 'PRO'), ('بسیار', 'ADV'), ('کتاب', 'N'), ('می‌خوانیم', 'V')]
-print(tafs)
-'''
+    sentences = sent_tokenize(text)
+
+    for sen in sentences[:]:
+        normal_sen = normalizer.normalize(sen)
+        words = remove_stop_words(word_tokenize(normal_sen))
+        if len(words) < 1:
+            sentences.remove(sen)
+            continue
+        sentence_words.append(words)
+        tagged_sen = tagger.tag(words)
+        num_nouns += sum(1 if tag in 'N' else 0 for (w, tag) in tagged_sen)
+        num_verbs += sum(1 if tag == 'V' else 0 for (w, tag) in tagged_sen)
+        num_adjcs += sum(1 if tag == 'AJ' or tag == 'AJe' else 0 for (w, tag) in tagged_sen)
+        num_advbs += sum(1 if tag == 'ADV' else 0 for (w, tag) in tagged_sen)
+        tagged_sentences.append(tagged_sen)
+
+    doc_features = {
+        'doc_words': len(all_words),
+        'doc_sens': len(sentence_words),
+        'doc_parag': sum([1 for p in text.split('\n') if len(p) > 0]),
+        'category': category,
+        'doc_verbs': num_verbs,
+        'doc_adjcs': num_adjcs,
+        'doc_advbs': num_advbs,
+        'doc_nouns': num_nouns
+    }
+
+    if golden_summaries:
+        normalized_summaries = []
+        gold_summaries = {}
+        for summ in golden_summaries:
+            summary = normalizer.normalize(golden_summaries[summ])
+            # word tokenized summaries for computing bleu scores:
+            normalized_summaries.append(summary.split())
+            summ_sens = sent_tokenize(summary)
+            gold_summaries[summ] = {'sens': [remove_stop_words(word_tokenize(sen)) for sen in summ_sens]}
+
+    position = 0
+    for sen in sentence_words:
+        document_feature_set.id += 1
+        words = sentence_words[position]
+        features = doc_features.copy()
+        add_features(features, words, sentence_words, word_freq, position)
+        features['id'] = document_feature_set.id
+
+        if golden_summaries:
+            features['target_bleu'] = avg_bleu_score(sen, normalized_summaries)
+            features['target_bleu_avg'] = avg_bleu_score(sen, normalized_summaries, True)
+            features['target'] = average_similarity(words, gold_summaries)
+            included = (features['target'] > 0.5)
+            features['included'] = included
+            features['source_file'] = key
+            features['text'] = ' '.join(sen)
+            feature_set.append((features, included))
+        else:
+            feature_set.append(features)
+        position += 1
+
+    document_feature_set.cache[hash_key] = (feature_set, sentences)
+    return feature_set, sentences
+
+
+document_feature_set.id = 0
+document_feature_set.cache = {}
 
 from Features import *
 

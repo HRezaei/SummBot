@@ -3,17 +3,17 @@ from GenerateDataset import *
 import sys
 import numpy as np
 
-def sentences_features(text):
-    feature_set = []
+def sentences_features(text, category):
+    feature_set = document_feature_set(text, category)
     all_words = word_tokenize(text)
     all_words = remove_stop_words(all_words)
     word_freq = FreqDist(all_words)
     #graph_model = build_graph_model()
     sentences = sent_tokenize(text)
     doc_features = {
-        'num_words': len(all_words),
-        'num_sens': len(sentences),
-        'num_parag': sum([1 for p in text.split('\n') if len(p) > 0])
+        'doc_words': len(all_words),
+        'doc_sens': len(sentences),
+        'doc_parag': sum([1 for p in text.split('\n') if len(p) > 0])
     }
     position = 0
     for position in range(len(sentences)):
@@ -27,8 +27,9 @@ def sentences_features(text):
         position += 1
     return (feature_set, sentences)
 
+
 def summ(text, clf, category):
-    sens_feats, sentences = sentences_features(text)
+    feature_set, sentences,  = document_feature_set(text, category)
     summary_len = 4
     text_len = len(sentences)
     if text_len > 30:
@@ -36,17 +37,17 @@ def summ(text, clf, category):
     elif text_len > 10:
         summary_len = 5
 
-    feature_set = []
-    for sen in sens_feats:
+    feature_set_filtered = []
+    for sen in feature_set:
         row = []
         for attr in valid_features:
             if attr == 'category':
-                row.append(category_map[category])
+                row.append(category_map[sen[attr]])
             else:
                 row.append(sen[attr])
-        feature_set.append(row)
+        feature_set_filtered.append(row)
 
-    result = clf.predict(feature_set)
+    result = clf.predict(feature_set_filtered)
     #result = np.random.rand(len(feature_set))
     dictv = {i:result[i] for i in range(len(result))}
     ranked = sorted(dictv.items(), key=operator.itemgetter(1), reverse=True)
