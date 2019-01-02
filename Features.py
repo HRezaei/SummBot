@@ -30,6 +30,7 @@ def frequency_score(sentence_words, word_freq):
         sen_score = sen_score + word_freq[sen_word]
     return sen_score / len(sentence_words)
 
+
 def inverse_sentence_freq(term, sentences):
     """
     Computes ISF
@@ -44,6 +45,7 @@ def inverse_sentence_freq(term, sentences):
     if(sentences_containing == 0): sentences_containing = 1
     return 1 - (math.log(sentences_containing) / math.log(len(sentences)))
 
+
 def tf_isf_score(sentence_words, sentences, word_freq):
     sen_score = 0
     for sen_word in sentence_words:
@@ -51,13 +53,16 @@ def tf_isf_score(sentence_words, sentences, word_freq):
             sen_word] * inverse_sentence_freq(sen_word, sentences)
     return sen_score
 
+
 def linear_poition_score(position, total_sentences):
     return 1 - (position / total_sentences)
+
 
 def cosine_position_score(position, total_sentences):
     alpha = 2
     return (math.cos(
         (2 * 3.14 * position) / (total_sentences - 1)) + alpha - 1) / alpha
+
 
 def title_similarity_score(sen, title):
     denominator = math.sqrt(len(sen) * len(title))
@@ -66,6 +71,7 @@ def title_similarity_score(sen, title):
     else:
         ratio = 0
     return ratio
+
 
 def cosine_similarity(vec1, vec2):
     """
@@ -85,6 +91,7 @@ def cosine_similarity(vec1, vec2):
         return 0.0
     else:
         return float(numerator) / denominator
+
 
 def cue_words(sentence_words, cue_words):
     '''

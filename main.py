@@ -33,7 +33,7 @@ def are_similar_rouge(sen1, sen2):
 
 
 def are_similar(sen1, sen2):
-    threshold = 0.5
+    threshold = similarity_threshold
     denominator = float(len(set(sen1).union(sen2)))
     if denominator > 0:
         ratio = len(set(sen1).intersection(sen2)) / denominator

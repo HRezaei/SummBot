@@ -2,6 +2,7 @@ import _pickle as cPickle
 from GenerateDataset import *
 import sys
 import numpy as np
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 def sentences_features(text, category):
     feature_set = document_feature_set(text, category)
@@ -28,7 +29,7 @@ def sentences_features(text, category):
     return (feature_set, sentences)
 
 
-def summ(text, clf, category):
+def summ(text, clf, category, normalizers):
     feature_set, sentences,  = document_feature_set(text, category)
     summary_len = 4
     text_len = len(sentences)
@@ -47,6 +48,18 @@ def summ(text, clf, category):
                 row.append(sen[attr])
         feature_set_filtered.append(row)
 
+    feature_set_filtered = np.array(feature_set_filtered)
+    normalize_column(feature_set_filtered, 'doc_words', normalizers)
+    normalize_column(feature_set_filtered, 'doc_nouns', normalizers)
+    normalize_column(feature_set_filtered, 'doc_verbs', normalizers)
+    normalize_column(feature_set_filtered, 'doc_adjcs', normalizers)
+    normalize_column(feature_set_filtered, 'doc_advbs', normalizers)
+    normalize_column(feature_set_filtered, 'doc_sens', normalizers)
+    normalize_column(feature_set_filtered, 'doc_parag', normalizers)
+    normalize_column(feature_set_filtered, 'tf', normalizers)
+    normalize_column(feature_set_filtered, 'category', normalizers)
+    normalize_column(feature_set_filtered, 'tfisf', normalizers)
+    normalize_column(feature_set_filtered, 'cue_words', normalizers)
     result = clf.predict(feature_set_filtered)
     #result = np.random.rand(len(feature_set))
     dictv = {i:result[i] for i in range(len(result))}

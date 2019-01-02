@@ -22,6 +22,7 @@ category_map = {
     'SC': 6
 }
 
+similarity_threshold = 0.45
 
 def read_file(path):
     file = open(path, "r", encoding='utf8')
@@ -48,17 +49,19 @@ def load_dataset(path):
     return features, target, labels
 
 
-def balance_dataset(X_train, y_train, ratio):
+def balance_dataset(feature_vectors, targets, labels, ratio):
     num_true = 0
     num_false = 0
     false_indices = []
     balanced_x_train = []
     balanced_y_train = []
-    for i in range(len(X_train)):
-        if y_train[i]>0.5:
+    balanced_labels = []
+    for i in range(len(feature_vectors)):
+        if targets[i] > similarity_threshold:
             num_true += 1
-            balanced_x_train.append(X_train[i])
-            balanced_y_train.append(y_train[i])
+            balanced_x_train.append(feature_vectors[i])
+            balanced_y_train.append(targets[i])
+            balanced_labels.append(labels[i])
         else:
             num_false += 1
             false_indices.append(i)
@@ -66,9 +69,10 @@ def balance_dataset(X_train, y_train, ratio):
     selected_indices = random.sample(false_indices, int(num_true*ratio))
     print("After balancing, positives/negatives: {}/{} ".format(num_true, len(selected_indices)))
     for i in selected_indices:
-        balanced_x_train.append(X_train[i])
-        balanced_y_train.append(y_train[i])
-    return (balanced_x_train, balanced_y_train)
+        balanced_x_train.append(feature_vectors[i])
+        balanced_y_train.append(targets[i])
+        balanced_labels.append(labels[i])
+    return balanced_x_train, balanced_y_train, balanced_labels
 
 
 def remove_stop_words(words):
@@ -110,6 +114,20 @@ def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=
                 cell = cell if cm[i, j] > hide_threshold else empty_cell
             print(cell, end=" ")
         print()
+
+
+def normalize_column(dataset, column_name, normalizers, mode='utilization'):
+    if column_name not in valid_features:
+        return
+    if column_name not in normalizers:
+        raise Exception('No scaler is defined for:' + column_name)
+    scaler = normalizers[column_name]
+    col_index = valid_features.index(column_name)
+    col = dataset[:, col_index].reshape(-1, 1)
+    if mode == 'learn':
+        scaler.fit(col)
+    dataset[:, col_index] = scaler.transform(col).reshape(1, -1)
+
 
 tagger = POSTagger(model='resources/postagger.model')
 stop_words = read_file("resources/stop-words.txt").split()

@@ -11,7 +11,6 @@ from fractions import Fraction
 import numpy as np
 
 
-
 def add_features(features, sent, all_sentences_tokenized, word_freq, position):
     '''
     Args:
@@ -25,19 +24,19 @@ def add_features(features, sent, all_sentences_tokenized, word_freq, position):
     Features.pos_ratio_based(features, sent)
     return features
 
+
 def are_similar_rouge(sen1, sen2):
     scores = rouge.get_scores(sen1, sen2)
     return (scores[0]['rouge-2']['f'] >= 0.7)
 
 
 def are_similar(sen1, sen2):
-    threshold = 0.5
     denominator = float(len(set(sen1).union(sen2)))
     if denominator > 0:
         ratio = len(set(sen1).intersection(sen2)) / denominator
     else:
         ratio = 0
-    return (ratio >= threshold, ratio)
+    return (ratio >= similarity_threshold, ratio)
 
 
 def avg_bleu_score(sen, summaries, avg=False):
@@ -53,6 +52,7 @@ def avg_bleu_score(sen, summaries, avg=False):
         if len(sen) < min_length:
             score *= np.exp(1-(min_length/len(sen)))
     return score
+
 
 def build_feature_set():
     datasetJson = read_file('resources/pasokh/all.json') 
@@ -74,7 +74,7 @@ def average_similarity(sen, gold_summaries):
         max = 0
         for sum_sen in gold_summaries[key]['sens']:
             (similar, similarity) = are_similar(sen, sum_sen)
-            if(similarity > max):
+            if similarity > max:
                 max = similarity
         total_similarity += max
     return total_similarity/len(gold_summaries)
@@ -151,7 +151,7 @@ def document_feature_set(text, category, golden_summaries=[], key=''):
             features['target_bleu'] = avg_bleu_score(sen, normalized_summaries)
             features['target_bleu_avg'] = avg_bleu_score(sen, normalized_summaries, True)
             features['target'] = average_similarity(words, gold_summaries)
-            included = (features['target'] > 0.5)
+            included = (features['target'] > similarity_threshold)
             features['included'] = included
             features['source_file'] = key
             features['text'] = ' '.join(sen)
@@ -183,6 +183,7 @@ stemmer = Stemmer()
 
 from nltk.translate.bleu_score import SmoothingFunction
 chencherry = SmoothingFunction()
+
 
 def generate_dataset():    
     feats = build_feature_set()
