@@ -3,14 +3,17 @@ from hazm import *
 
 all_features = ['cosine_position', 'cue_words', 'tfisf', 'tf', 'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio',
                 'pos_av_ratio', 'doc_words', 'doc_sens', 'included', 'target', 'target_bleu_avg', 'text',
-                'target_bleu', 'source_file', 'id', 'category', 'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns']
+                'target_bleu', 'source_file', 'id', 'category', 'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns',
+                'nnf_isnnf', 'vef_isvef', 'ajf_isajf', 'avf_isavf'
+]
 
 
 valid_features = ['cosine_position', 'cue_words', 'tfisf',
-                   'tf',
+                  # 'tf',
                   'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio', 'pos_av_ratio',
-     'doc_words', 'doc_sens' , 'doc_parag', 'category',
-                  'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns'
+      #'doc_words', 'doc_sens' , 'doc_parag', 'category',
+                 # 'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns',
+                  'nnf_isnnf', 'vef_isvef', 'ajf_isajf', 'avf_isavf'
  ]
 
 category_map = {

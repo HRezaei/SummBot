@@ -17,7 +17,10 @@ def pos_ratio_based(features, sentence_words):
     features['pos_ve_ratio'] = ve_count/all_count
     features['pos_aj_ratio'] = aj_count/all_count
     features['pos_av_ratio'] = av_count/all_count
-
+    features['nnf_isnnf'] = (nn_count/features['doc_nouns']) if features['doc_nouns'] > 0 else 0
+    features['vef_isvef'] = (ve_count/features['doc_verbs']) if features['doc_verbs'] > 0 else 0
+    features['ajf_isajf'] = (aj_count/features['doc_adjcs']) if features['doc_adjcs'] > 0 else 0
+    features['avf_isavf'] = (av_count/features['doc_advbs']) if features['doc_advbs'] > 0 else 0
 
 def frequency_score(sentence_words, word_freq):
     """
@@ -42,7 +45,8 @@ def inverse_sentence_freq(term, sentences):
     for sen in sentences:
         if term in sen:
             sentences_containing = sentences_containing + 1
-    if(sentences_containing == 0): sentences_containing = 1
+    if sentences_containing == 0:
+        sentences_containing = 1
     return 1 - (math.log(sentences_containing) / math.log(len(sentences)))
 
 

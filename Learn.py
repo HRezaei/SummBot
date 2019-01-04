@@ -47,15 +47,18 @@ def evaluate_summarizer(clf, dataset, remove_stopwords=False, normalizers=[]):
     for key in dataset:
         total_summaries += 1
         text = dataset[key]['text']
-        summary = summ(text, clf, key[4:6])
-        if remove_stopwords:
-            summary = remove_stop_words(summary)
         gold_summaries = dataset[key]['summaries']
         best_score = empty_score
         for ref_key in gold_summaries:
             ref = gold_summaries[ref_key]
+            ref_len = len(sent_tokenize(ref))
             if remove_stopwords:
                 ref = remove_stop_words(ref)
+            summary = summ(text, clf, key[4:6], normalizers, ref_len)
+            if remove_stopwords:
+                summary = remove_stop_words(summary)
+            #if len(summary) != len(ref):
+            #    diff_summs += 1
             scores = rouge.get_scores(ref, summary)[0]
             best_score = best_rouge_f(best_score, scores)
    
@@ -173,7 +176,7 @@ for model_type in ['ideal', 'dummy', 'linear', 'svm', 'dtr']:
         print('Coefficients: \n', regr.coef_)
         export_name = 'linear'
     elif model_type == 'svm':
-        regr = SVR(verbose=True, epsilon=0.01, gamma='auto')
+        regr = SVR(verbose=True, epsilon=0.001, gamma='auto')
         # Train the model using the training sets
         regr.fit(X_balanced, y_balanced)
         # The coefficients

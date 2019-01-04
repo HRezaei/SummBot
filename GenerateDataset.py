@@ -62,7 +62,7 @@ def build_feature_set():
         doc = pasokh[key]
         text = doc["text"]
         #title = doc["title"]
-        feature_set, tmp = document_feature_set(text, key, doc['summaries'])
+        feature_set, tmp = document_feature_set(text, key[4:6], doc['summaries'])
         output[key.replace(".", "")] = feature_set   
 
     return output

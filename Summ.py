@@ -29,14 +29,17 @@ def sentences_features(text, category):
     return (feature_set, sentences)
 
 
-def summ(text, clf, category, normalizers):
+def summ(text, clf, category, normalizers, cutoff=None):
     feature_set, sentences,  = document_feature_set(text, category)
-    summary_len = 4
-    text_len = len(sentences)
-    if text_len > 30:
-        summary_len = round(text_len/6)
-    elif text_len > 10:
-        summary_len = 5
+    if cutoff:
+        summary_len = cutoff
+    else:
+        summary_len = 4
+        text_len = len(sentences)
+        if text_len > 30:
+            summary_len = round(text_len/6)
+        elif text_len > 10:
+            summary_len = 5
 
     feature_set_filtered = []
     for sen in feature_set:
