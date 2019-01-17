@@ -21,6 +21,9 @@ def add_features(features, sent, all_sentences_tokenized, word_freq, position):
     features["cosine_position"] = Features.cosine_position_score(position, total_sentences)
     features["tf"] = Features.frequency_score(sent, word_freq)
     features["cue_words"] = Features.cue_words(sent, cue_words)
+    features['len'] = len(sent)
+    avg_len = sum([len(s) for s in all_sentences_tokenized])/total_sentences
+    features['relative_len'] = len(sent)/avg_len
     Features.pos_ratio_based(features, sent)
     return features
 
@@ -126,7 +129,13 @@ def document_feature_set(text, category, golden_summaries=[], key=''):
         'doc_verbs': num_verbs,
         'doc_adjcs': num_adjcs,
         'doc_advbs': num_advbs,
-        'doc_nouns': num_nouns
+        'doc_nouns': num_nouns,
+        'political': category == 'PO',
+        'social': category == 'SO',
+        'sport': category == 'SP',
+        'culture': category == 'CU',
+        'economy': category == 'EC',
+        'science': category == 'SC'
     }
 
     if golden_summaries:

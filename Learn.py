@@ -129,7 +129,8 @@ normalizers = {
     'tf': MinMaxScaler(),
     'category': MinMaxScaler(),
     'tfisf': MinMaxScaler(),
-    'cue_words': MinMaxScaler()
+    'cue_words': MinMaxScaler(),
+    'len': MinMaxScaler()
 }
 
 normalize_column(X_normal, 'doc_words', normalizers, 'learn')
@@ -143,6 +144,7 @@ normalize_column(X_normal, 'tf', normalizers, 'learn')
 normalize_column(X_normal, 'category', normalizers, 'learn')
 normalize_column(X_normal, 'tfisf', normalizers, 'learn')
 normalize_column(X_normal, 'cue_words', normalizers, 'learn')
+normalize_column(X_normal, 'len', normalizers, 'learn')
 
 
 X_train, X_test, y_train, y_test, labels_train, labels_test = \

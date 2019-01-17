@@ -63,6 +63,8 @@ def summ(text, clf, category, normalizers, cutoff=None):
     normalize_column(feature_set_filtered, 'category', normalizers)
     normalize_column(feature_set_filtered, 'tfisf', normalizers)
     normalize_column(feature_set_filtered, 'cue_words', normalizers)
+    normalize_column(feature_set_filtered, 'len', normalizers)
+
     result = clf.predict(feature_set_filtered)
     #result = np.random.rand(len(feature_set))
     dictv = {i:result[i] for i in range(len(result))}
