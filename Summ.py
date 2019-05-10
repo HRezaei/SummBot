@@ -29,8 +29,8 @@ def sentences_features(text, category):
     return (feature_set, sentences)
 
 
-def summ(text, clf, category, normalizers, cutoff=None):
-    feature_set, sentences,  = document_feature_set(text, category)
+def summ(text, clf, category, used_feature_names, cutoff=None):
+    feature_set, sentences = document_feature_set(text, category)
     if cutoff:
         summary_len = cutoff
     else:
@@ -44,7 +44,7 @@ def summ(text, clf, category, normalizers, cutoff=None):
     feature_set_filtered = []
     for sen in feature_set:
         row = []
-        for attr in valid_features:
+        for attr in used_feature_names:
             if attr == 'category':
                 row.append(category_map[sen[attr]])
             else:
@@ -52,18 +52,8 @@ def summ(text, clf, category, normalizers, cutoff=None):
         feature_set_filtered.append(row)
 
     feature_set_filtered = np.array(feature_set_filtered)
-    normalize_column(feature_set_filtered, 'doc_words', normalizers)
-    normalize_column(feature_set_filtered, 'doc_nouns', normalizers)
-    normalize_column(feature_set_filtered, 'doc_verbs', normalizers)
-    normalize_column(feature_set_filtered, 'doc_adjcs', normalizers)
-    normalize_column(feature_set_filtered, 'doc_advbs', normalizers)
-    normalize_column(feature_set_filtered, 'doc_sens', normalizers)
-    normalize_column(feature_set_filtered, 'doc_parag', normalizers)
-    normalize_column(feature_set_filtered, 'tf', normalizers)
-    normalize_column(feature_set_filtered, 'category', normalizers)
-    normalize_column(feature_set_filtered, 'tfisf', normalizers)
-    normalize_column(feature_set_filtered, 'cue_words', normalizers)
-    normalize_column(feature_set_filtered, 'len', normalizers)
+    normalize_dataset(feature_set_filtered, used_feature_names)
+
 
     result = clf.predict(feature_set_filtered)
     #result = np.random.rand(len(feature_set))

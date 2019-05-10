@@ -19,6 +19,7 @@ def add_features(features, sent, all_sentences_tokenized, word_freq, position):
     total_sentences = len(all_sentences_tokenized)
     features["tfisf"] = Features.tf_isf_score(sent, all_sentences_tokenized, word_freq)
     features["cosine_position"] = Features.cosine_position_score(position, total_sentences)
+    features['position'] = 1/(position+1)
     features["tf"] = Features.frequency_score(sent, word_freq)
     features["cue_words"] = Features.cue_words(sent, cue_words)
     features['len'] = len(sent)
@@ -66,7 +67,7 @@ def build_feature_set():
         text = doc["text"]
         #title = doc["title"]
         feature_set, tmp = document_feature_set(text, key[4:6], doc['summaries'])
-        output[key.replace(".", "")] = feature_set   
+        output[key] = feature_set
 
     return output
 
@@ -90,6 +91,17 @@ def encode_complex(obj):
 
 
 def document_feature_set(text, category, golden_summaries=[], key=''):
+    """
+    Converts a raw text to a matrix of features.
+    Each row corresponds with a sentence in given text
+    If golden summaries is passed, it also computes target attributes and a few other additional features
+    This function is used both in generating dataset and in summarizing an individual text
+    :param text:
+    :param category:
+    :param golden_summaries:
+    :param key:
+    :return:
+    """
     hash_key = hashlib.md5((text+category).encode('utf-8')).hexdigest()
     if hash_key in document_feature_set.cache:
         return document_feature_set.cache[hash_key]
@@ -100,6 +112,7 @@ def document_feature_set(text, category, golden_summaries=[], key=''):
     num_nouns = 0
     num_advbs = 0
     num_adjcs = 0
+    doc_nums = 0
 
     all_words = word_tokenize(text)
     all_words = remove_stop_words(all_words)
@@ -119,6 +132,7 @@ def document_feature_set(text, category, golden_summaries=[], key=''):
         num_verbs += sum(1 if tag == 'V' else 0 for (w, tag) in tagged_sen)
         num_adjcs += sum(1 if tag == 'AJ' or tag == 'AJe' else 0 for (w, tag) in tagged_sen)
         num_advbs += sum(1 if tag == 'ADV' else 0 for (w, tag) in tagged_sen)
+        doc_nums += sum(1 if tag == 'NUM' else 0 for (w, tag) in tagged_sen)
         tagged_sentences.append(tagged_sen)
 
     doc_features = {
@@ -130,6 +144,7 @@ def document_feature_set(text, category, golden_summaries=[], key=''):
         'doc_adjcs': num_adjcs,
         'doc_advbs': num_advbs,
         'doc_nouns': num_nouns,
+        'doc_nums': doc_nums,
         'political': category == 'PO',
         'social': category == 'SO',
         'sport': category == 'SP',

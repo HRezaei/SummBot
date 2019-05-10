@@ -1,22 +1,19 @@
 import json, random, re, hashlib
 from hazm import *
 
-all_features = ['cosine_position', 'cue_words', 'tfisf', 'tf', 'len', 'relative_len', 'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio',
-                'pos_av_ratio', 'doc_words', 'doc_sens', 'included', 'target', 'target_bleu_avg', 'text',
-                'target_bleu', 'source_file', 'id', 'category', 'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns',
-                'nnf_isnnf', 'vef_isvef', 'ajf_isajf', 'avf_isavf', 'political', 'social', 'sport', 'culture',
-                'economy', 'science'
+all_features = ['position', 'cosine_position', 'cue_words', 'tfisf', 'tf', 'len', 'relative_len', 'num_count',
+                'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio', 'pos_av_ratio', 'pos_num_ratio', 'doc_words', 'doc_sens', 'doc_parag',
+                'included', 'target', 'target_bleu_avg', 'text', 'target_bleu', 'source_file', 'id', 'category',
+                'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns', 'doc_nums', 'nnf_isnnf', 'vef_isvef', 'ajf_isajf',
+                'avf_isavf', 'nuf_isnuf', 'political', 'social', 'sport', 'culture', 'economy', 'science'
 ]
 
-
-valid_features = ['cosine_position', 'tfisf', 'relative_len',
-                  # 'tf', 'cue_words',
-                  'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio', 'pos_av_ratio', # 'len',
-                  'doc_words', 'doc_sens' , 'doc_parag', 'category',
-                  # 'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns',
-                  'nnf_isnnf', 'vef_isvef', 'ajf_isajf', 'avf_isavf',
-                 # 'political', 'social', 'sport', 'culture', 'economy', 'science'
- ]
+learning_features = ['position', 'cosine_position', 'cue_words', 'tfisf', 'tf', 'len', 'relative_len', 'num_count',
+                     'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio', 'pos_av_ratio', 'pos_num_ratio',
+                     'doc_words', 'doc_sens', 'doc_parag', 'category', 'doc_verbs', 'doc_adjcs', 'doc_advbs',
+                     'doc_nouns', 'doc_nums', 'nnf_isnnf', 'vef_isvef', 'ajf_isajf', 'avf_isavf', 'nuf_isnuf',
+                     'political', 'social', 'sport', 'culture', 'economy', 'science'
+]
 
 category_map = {
     'PO': 1,
@@ -43,7 +40,7 @@ def load_dataset(path):
     for key in dataset:
         for (sen, label) in dataset[key]:
             row = []
-            for attr in valid_features:
+            for attr in learning_features:
                 if attr == 'category':
                     row.append(category_map[sen[attr]])
                 else:
@@ -52,6 +49,54 @@ def load_dataset(path):
             target.append(sen['target'])
             labels.append(label)
     return features, target, labels
+
+
+def load_dataset_splitted(path, split_size=0.25):
+    dataset = json.loads(read_file(path))
+    all_vectors = []
+    features = {
+        'train': [],
+        'test': []
+    }
+    target = {
+        'train': [],
+        'test': []
+    }
+    labels = {
+        'train': [],
+        'test': []
+    }
+    documents = {
+        'train': [],
+        'test': []
+    }
+    for document_key in dataset:
+        rand = random.random()
+        key = 'train'
+        if rand < split_size:
+            key = 'test'
+        documents[key].append(document_key)
+        for (sen, label) in dataset[document_key]:
+            row = []
+            for attr in learning_features:
+                if attr == 'category':
+                    row.append(category_map[sen[attr]])
+                else:
+                    row.append(sen[attr])
+            features[key].append(row)
+            all_vectors.append(row)
+            target[key].append(sen['target'])
+            labels[key].append(label)
+    return features, target, labels, documents, all_vectors
+
+def select_features(feature_names, matrix):
+    feature_indexes = []
+    for name in feature_names:
+        if name in learning_features:
+            col_index = learning_features.index(name)
+            feature_indexes.append(col_index)
+    features = matrix[:, feature_indexes]
+    return features
 
 
 def balance_dataset(feature_vectors, targets, labels, ratio):
@@ -78,6 +123,40 @@ def balance_dataset(feature_vectors, targets, labels, ratio):
         balanced_y_train.append(targets[i])
         balanced_labels.append(labels[i])
     return balanced_x_train, balanced_y_train, balanced_labels
+
+
+def normalize_dataset(feature_matrix, feature_names, mode='utilization'):
+    if normalize_dataset.scalers is None:
+        from sklearn.preprocessing import MinMaxScaler
+        scalers = {
+            'doc_words': MinMaxScaler(),
+            'doc_nouns': MinMaxScaler(),
+            'doc_verbs': MinMaxScaler(),
+            'doc_adjcs': MinMaxScaler(),
+            'doc_advbs': MinMaxScaler(),
+            'doc_sens': MinMaxScaler(),
+            'doc_parag': MinMaxScaler(),
+            'tf': MinMaxScaler(),
+            #'position': MinMaxScaler(),
+            'tfisf': MinMaxScaler(),
+            'cue_words': MinMaxScaler(),
+            'len': MinMaxScaler()
+        }
+        normalize_dataset.scalers = scalers
+    elif mode == 'learn':
+        raise Exception('normalize_dataset must not be called again in learn mode')
+    else:
+        scalers = normalize_dataset.scalers
+
+    for feature_name in scalers:
+        if feature_name in feature_names:
+            scaler = scalers[feature_name]
+            col_index = feature_names.index(feature_name)
+            col = feature_matrix[:, col_index].reshape(-1, 1)
+            if mode == 'learn':
+                scaler.fit(col)
+            feature_matrix[:, col_index] = scaler.transform(col).reshape(1, -1)*10
+normalize_dataset.scalers = None
 
 
 def remove_stop_words(words):
@@ -121,18 +200,12 @@ def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=
         print()
 
 
-def normalize_column(dataset, column_name, normalizers, mode='utilization'):
-    if column_name not in valid_features:
-        return
-    if column_name not in normalizers:
-        raise Exception('No scaler is defined for:' + column_name)
-    scaler = normalizers[column_name]
-    col_index = valid_features.index(column_name)
-    col = dataset[:, col_index].reshape(-1, 1)
-    if mode == 'learn':
-        scaler.fit(col)
-    dataset[:, col_index] = scaler.transform(col).reshape(1, -1)
-
+def print_rouges(rouges):
+    #print("Diff" + str(diff_summs))
+    print("{:<8} {:<25} {:<25} {:<25}".format('Test,','f-measure,','precision,', 'recall'))
+    for k in ['rouge-1', 'rouge-2', 'rouge-l']:
+        v = rouges[k]
+        print("{:<8}, {:<25}, {:<25}, {:<25}".format(k, v['f'], v['p'], v['r']))
 
 tagger = POSTagger(model='resources/postagger.model')
 stop_words = read_file("resources/stop-words.txt").split()

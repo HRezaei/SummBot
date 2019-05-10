@@ -13,14 +13,18 @@ def pos_ratio_based(features, sentence_words):
     ve_count = sum(1 if tag=='V' else 0 for (w, tag) in tags)
     aj_count = sum(1 if tag=='AJ' or tag=='AJe' else 0 for (w, tag) in tags)
     av_count = sum(1 if tag=='ADV' else 0 for (w, tag) in tags)
+    num_count = sum(1 if tag == 'NUM' else 0 for (w, tag) in tags)
+    features['num_count'] = num_count
     features['pos_nn_ratio'] = nn_count/all_count
     features['pos_ve_ratio'] = ve_count/all_count
     features['pos_aj_ratio'] = aj_count/all_count
     features['pos_av_ratio'] = av_count/all_count
+    features['pos_num_ratio'] = num_count/all_count
     features['nnf_isnnf'] = (nn_count/features['doc_nouns']) if features['doc_nouns'] > 0 else 0
     features['vef_isvef'] = (ve_count/features['doc_verbs']) if features['doc_verbs'] > 0 else 0
     features['ajf_isajf'] = (aj_count/features['doc_adjcs']) if features['doc_adjcs'] > 0 else 0
     features['avf_isavf'] = (av_count/features['doc_advbs']) if features['doc_advbs'] > 0 else 0
+    features['nuf_isnuf'] = (num_count / features['doc_nums']) if features['doc_nums'] > 0 else 0
 
 def frequency_score(sentence_words, word_freq):
     """
