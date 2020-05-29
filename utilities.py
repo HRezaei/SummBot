@@ -1,5 +1,8 @@
 import json, random, re, hashlib
 from hazm import *
+import nltk, math, operator
+from nltk import bleu
+from fractions import Fraction
 
 all_features = ['position', 'cosine_position', 'cue_words', 'tfisf', 'tf', 'len', 'relative_len', 'num_count',
                 'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio', 'pos_av_ratio', 'pos_num_ratio', 'doc_words', 'doc_sens', 'doc_parag',
@@ -174,6 +177,56 @@ def remove_stop_words(words):
 remove_stop_words.cache = {}
 
 
+def are_similar_rouge(sen1, sen2):
+    scores = rouge.get_scores(sen1, sen2)
+    return (scores[0]['rouge-2']['f'] >= 0.7)
+
+
+def are_similar(sen1, sen2):
+    denominator = float(len(set(sen1).union(sen2)))
+    if denominator > 0:
+        ratio = len(set(sen1).intersection(sen2)) / denominator
+    else:
+        ratio = 0
+    return (ratio >= similarity_threshold, ratio)
+
+
+def average_similarity(sen, gold_summaries):
+    total_similarity = 0
+    for key in gold_summaries:
+        max = 0
+        for sum_sen in gold_summaries[key]['sens']:
+            (similar, similarity) = are_similar(sen, sum_sen)
+            if similarity > max:
+                max = similarity
+        total_similarity += max
+    return total_similarity / len(gold_summaries)
+
+
+def avg_bleu_score(sen, summaries, avg=False):
+    min_length = 5
+    if avg:
+        from nltk.translate.bleu_score import SmoothingFunction
+        chencherry = SmoothingFunction()
+        total = 0
+        for summ in summaries:
+            total += bleu([summ], sen, smoothing_function=chencherry.method2)
+        score = total / len(summaries)
+    else:
+#        score = bleu(summaries, sen, smoothing_function=chencherry.method2)
+        score = nltk.translate.bleu_score.modified_precision(summaries, sen, 2)
+        if len(sen) < min_length:
+            import numpy as np
+            score *= np.exp(1-(min_length/len(sen)))
+    return score
+
+
+def encode_complex(obj):
+    if isinstance(obj, Fraction):
+        return obj.numerator/ obj.denominator
+    raise TypeError(repr(obj) + " is not JSON serializable")
+
+
 def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
     """pretty print for confusion matrixes
     Thanks to https://gist.github.com/zachguo/10296432
@@ -206,6 +259,27 @@ def print_rouges(rouges):
     for k in ['rouge-1', 'rouge-2', 'rouge-l']:
         v = rouges[k]
         print("{:<8}, {:<25}, {:<25}, {:<25}".format(k, v['f'], v['p'], v['r']))
+
+
+def write_dataset_csv(feats, path):
+    output = [','.join(all_features) + " \r\n"]
+
+    for key in feats:
+        for (sen, target) in feats[key]:
+            row = []
+            for attr in all_features:
+                row.append(str(sen[attr]))
+            output.append(','.join(row) + "\r\n")
+            '''str(sen['id']) + "," + str(sen['pos_nn_ratio']) + "," + str(sen['pos_ve_ratio']) + "," +\
+            str(sen['pos_aj_ratio']) + "," + str(sen['pos_av_ratio']) + "," + str(sen['tfisf']) + "," + \
+            str(sen['tf']) + "," + str(sen['cue_words']) + "," + str(sen['cosine_position']) + "," + \
+            str(target)+ "\r\n" )'''
+
+    f_file = open(path, '+w')
+    f_file.writelines(output)
+    f_file.close()
+    print(path + " has been written successfully")
+
 
 tagger = POSTagger(model='resources/postagger.model')
 stop_words = read_file("resources/stop-words.txt").split()

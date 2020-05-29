@@ -66,6 +66,7 @@ def summ(text, clf, category, used_feature_names, cutoff=None):
     summary = [sentences[i] for i in selected]
     #for i in range(len(result)):
     #    y = result[i]
+    return summary
     return " ".join(summary)
 
 

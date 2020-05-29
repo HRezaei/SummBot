@@ -1,13 +1,9 @@
-import nltk, math, operator
 from nltk.probability import FreqDist
-from nltk import bleu
 import json, sys, hashlib
-from hazm import *
 from rouge import Rouge
 from utilities import *
 #from FarsnetLoader import *
 import Features
-from fractions import Fraction
 import numpy as np
 
 
@@ -29,34 +25,6 @@ def add_features(features, sent, all_sentences_tokenized, word_freq, position):
     return features
 
 
-def are_similar_rouge(sen1, sen2):
-    scores = rouge.get_scores(sen1, sen2)
-    return (scores[0]['rouge-2']['f'] >= 0.7)
-
-
-def are_similar(sen1, sen2):
-    denominator = float(len(set(sen1).union(sen2)))
-    if denominator > 0:
-        ratio = len(set(sen1).intersection(sen2)) / denominator
-    else:
-        ratio = 0
-    return (ratio >= similarity_threshold, ratio)
-
-
-def avg_bleu_score(sen, summaries, avg=False):
-    min_length = 5
-    if avg:
-        total = 0
-        for summ in summaries:
-            total += bleu([summ], sen, smoothing_function=chencherry.method2)
-        score = total / len(summaries)
-    else:
-#        score = bleu(summaries, sen, smoothing_function=chencherry.method2)
-        score = nltk.translate.bleu_score.modified_precision(summaries, sen, 2)
-        if len(sen) < min_length:
-            score *= np.exp(1-(min_length/len(sen)))
-    return score
-
 
 def build_feature_set():
     datasetJson = read_file('resources/pasokh/all.json') 
@@ -70,24 +38,6 @@ def build_feature_set():
         output[key] = feature_set
 
     return output
-
-
-def average_similarity(sen, gold_summaries):
-    total_similarity = 0
-    for key in gold_summaries:
-        max = 0
-        for sum_sen in gold_summaries[key]['sens']:
-            (similar, similarity) = are_similar(sen, sum_sen)
-            if similarity > max:
-                max = similarity
-        total_similarity += max
-    return total_similarity/len(gold_summaries)
-                
-
-def encode_complex(obj):
-    if isinstance(obj, Fraction):
-        return obj.numerator/ obj.denominator
-    raise TypeError(repr(obj) + " is not JSON serializable")
 
 
 def document_feature_set(text, category, golden_summaries=[], key=''):
@@ -205,9 +155,6 @@ rouge = Rouge()
 normalizer = Normalizer()
 stemmer = Stemmer()
 
-from nltk.translate.bleu_score import SmoothingFunction
-chencherry = SmoothingFunction()
-
 
 def generate_dataset():    
     feats = build_feature_set()
@@ -218,24 +165,7 @@ def generate_dataset():
     '''f_file = open('referense_sens.json', '+w')
     json.dump(refs, f_file, ensure_ascii=False, default=encode_complex)
     f_file.close()'''
-
-    output = [','.join(all_features) + " \r\n"]
-
-    for key in feats:
-        for (sen, target) in feats[key]:
-            row = []
-            for attr in all_features:
-                row.append(str(sen[attr]))
-            output.append(','.join(row) + "\r\n")
-            '''str(sen['id']) + "," + str(sen['pos_nn_ratio']) + "," + str(sen['pos_ve_ratio']) + "," +\
-            str(sen['pos_aj_ratio']) + "," + str(sen['pos_av_ratio']) + "," + str(sen['tfisf']) + "," + \
-            str(sen['tf']) + "," + str(sen['cue_words']) + "," + str(sen['cosine_position']) + "," + \
-            str(target)+ "\r\n" )'''
-
-    f_file = open('dataset.csv', '+w')
-    f_file.writelines(output)
-    f_file.close()
-    print("dataset.csv has been written successfully")
+    write_dataset_csv(feats, 'dataset.csv')
 
 
 if len(sys.argv) > 1 and sys.argv[1] == 'all':
