@@ -1,5 +1,5 @@
 import json, random, re, hashlib
-from hazm import *
+#from hazm import *
 import nltk, math, operator
 from nltk import bleu
 from fractions import Fraction
@@ -18,16 +18,64 @@ learning_features = ['position', 'cosine_position', 'cue_words', 'tfisf', 'tf', 
                      'political', 'social', 'sport', 'culture', 'economy', 'science'
 ]
 
-category_map = {
-    'PO': 1,
-    'SO': 2,
-    'SP': 3,
-    'CU': 4,
-    'EC': 5,
-    'SC': 6
-}
+
+def dynamic_mapping(category, namespace=''):
+    '''
+    Takes a category and a namespace and assigns a unique integer ID to
+    that category within given namespace. Used for transforming nominal
+    features to numerical ones
+    :param category:
+    :param namespace:
+    :return:
+    '''
+    maps = dynamic_mapping.maps
+
+    if namespace not in maps:
+        maps[namespace] = {}
+
+    map = maps[namespace]
+    if category in map:
+        return map[category]
+    next_id = len(map) + 1
+    map[category] = next_id
+    return next_id
+
+dynamic_mapping.maps = {}
+
+
+def pasokh_category_mapping(category):
+    category_map = {
+        'PO': 1,
+        'SO': 2,
+        'SP': 3,
+        'CU': 4,
+        'EC': 5,
+        'SC': 6
+    }
+    return category_map[category]
+
+
+def cnn_category_mapping(category):
+    category_map = {
+        'living': 1,
+        'politics': 2,
+        'world': 3,
+        'business': 4,
+        'health': 5,
+        'showbiz': 6,
+        'us': 7,
+        'justice': 8,
+        'opinion': 9,
+        'travel': 10,
+        'tech': 11,
+        'sport': 12,
+    }
+
+    return category_map[category]
+
 
 similarity_threshold = 0.45
+
 
 def read_file(path):
     file = open(path, "r", encoding='utf8')
@@ -61,8 +109,13 @@ def load_dataset(path):
     return features, target, labels
 
 
-def load_dataset_splitted(path, split_size=0.25):
-    dataset = json.loads(read_file(path))
+def split_dataset(dataset, features_used, split_size=0.25, dataset_name='pasokh'):
+    #dataset = json.loads(read_file(path))
+
+    '''
+    import main_doc_eng
+    dataset = main_doc_eng.build_feature_set()
+    '''
     all_vectors = []
     features = {
         'train': [],
@@ -80,7 +133,11 @@ def load_dataset_splitted(path, split_size=0.25):
         'train': [],
         'test': []
     }
+    i = 0
     for document_key in dataset:
+        #if i > 1000:
+        #    break
+        i += 1
         rand = random.random()
         key = 'train'
         if rand < split_size:
@@ -88,9 +145,12 @@ def load_dataset_splitted(path, split_size=0.25):
         documents[key].append(document_key)
         for (sen, label) in dataset[document_key]:
             row = []
-            for attr in learning_features:
+            for attr in features_used:
                 if attr == 'category':
-                    row.append(category_map[sen[attr]])
+                    if dataset_name == 'pasokh':
+                        row.append(pasokh_category_mapping(sen[attr]))
+                    else:
+                        row.append(cnn_category_mapping(sen[attr]))
                 else:
                     row.append(sen[attr])
             features[key].append(row)
@@ -98,6 +158,7 @@ def load_dataset_splitted(path, split_size=0.25):
             target[key].append(sen['target'])
             labels[key].append(label)
     return features, target, labels, documents, all_vectors
+
 
 def select_features(feature_names, matrix):
     feature_indexes = []
@@ -165,23 +226,8 @@ def normalize_dataset(feature_matrix, feature_names, mode='utilization'):
             col = feature_matrix[:, col_index].reshape(-1, 1)
             if mode == 'learn':
                 scaler.fit(col)
-            feature_matrix[:, col_index] = scaler.transform(col).reshape(1, -1)*10
+            feature_matrix[:, col_index] = scaler.transform(col).reshape(1, -1)
 normalize_dataset.scalers = None
-
-
-def remove_stop_words(words):
-    hash_key = hashlib.md5(str(words).encode('utf-8')).hexdigest()
-    if hash_key in remove_stop_words.cache:
-        return remove_stop_words.cache[hash_key]
-    is_string = isinstance(words, str)
-    if is_string:
-        words = word_tokenize(words)
-#This should be read once instead of every time this function is called
-    removed = [word for word in words if word not in stop_words and re.sub("\s|\u200c", "", word).isalnum()]
-    if is_string:
-        return ' '.join(removed)
-    return removed
-remove_stop_words.cache = {}
 
 
 def are_similar_rouge(sen1, sen2):
@@ -195,18 +241,18 @@ def are_similar(sen1, sen2):
         ratio = len(set(sen1).intersection(sen2)) / denominator
     else:
         ratio = 0
-    return (ratio >= similarity_threshold, ratio)
+    return ratio >= similarity_threshold, ratio
 
 
 def average_similarity(sen, gold_summaries):
     total_similarity = 0
-    for key in gold_summaries:
-        max = 0
-        for sum_sen in gold_summaries[key]['sens']:
+    for sentence_list in gold_summaries:
+        max_similarity = 0
+        for sum_sen in sentence_list:
             (similar, similarity) = are_similar(sen, sum_sen)
-            if similarity > max:
-                max = similarity
-        total_similarity += max
+            if similarity > max_similarity:
+                max_similarity = similarity
+        total_similarity += max_similarity
     return total_similarity / len(gold_summaries)
 
 
@@ -285,12 +331,14 @@ def print_rouges(rouges):
 
 
 def write_dataset_csv(feats, path):
-    output = [','.join(all_features) + " \r\n"]
+    first_row = feats[list(feats.keys())[0]][0][0] #get one of values
+    all_columns = sorted(first_row.keys())
+    output = [','.join(all_columns) + " \r\n"]
 
     for key in feats:
         for (sen, target) in feats[key]:
             row = []
-            for attr in all_features:
+            for attr in all_columns:
                 row.append(str(sen[attr]))
             output.append(','.join(row) + "\r\n")
             '''str(sen['id']) + "," + str(sen['pos_nn_ratio']) + "," + str(sen['pos_ve_ratio']) + "," +\
@@ -304,5 +352,106 @@ def write_dataset_csv(feats, path):
     print(path + " has been written successfully")
 
 
-tagger = POSTagger(model='resources/postagger.model')
-stop_words = read_file("resources/stop-words.txt").split()
+def cue_words(language):
+    if language in cue_words.static:
+        return cue_words.static[language]
+    lang_map = {
+        'en': "resources/cue-words-en.txt",
+        'fa': "resources/cue-words.txt"
+    }
+
+    cue_words.static[language] = read_file(lang_map[language]).split()
+    return cue_words.static[language]
+
+
+cue_words.static = {}
+
+
+def stop_words(language):
+    if language in stop_words.static:
+        return stop_words.static[language]
+    if language == 'en':
+        stop_words_list = set(nltk.corpus.stopwords.words('english'))
+    elif language == 'fa':
+        stop_words_list = read_file("resources/stop-words.txt").split()
+
+    stop_words.static[language] = stop_words_list
+    return stop_words_list
+
+
+stop_words.static = {}
+
+
+def json_write(data, path):
+    import json
+    file = open(path, "w+")
+    json.dump(data, file, ensure_ascii=False)
+    file.close()
+    return True
+
+
+def json_read(path):
+    import json
+    file = open(path, "r")
+    data = json.load(file)
+    file.close()
+    return data
+
+
+def export_model(model, export_name):
+    import _pickle as cPickle
+    with open('models/' + export_name + '.pkl', 'wb') as fid:
+        cPickle.dump(model, fid)
+    cPickle.dump(normalize_dataset.scalers, open('data/scalers.pkl', 'wb'))
+
+
+def english_stemmer():
+    if english_stemmer.cache:
+        return english_stemmer.cache
+
+    from nltk.stem.snowball import SnowballStemmer
+    english_stemmer.cache = SnowballStemmer("english")
+    return english_stemmer.cache
+
+
+english_stemmer.cache = None
+
+
+def cnn_html_escape(text):
+    html_escape_table = {
+        "&": "&amp;",
+        '"': "&quot;",
+        "'": "&apost;",
+        ">": "&gt;",
+        "<": "&lt;",
+    }
+    return "".join(html_escape_table.get(c,c) for c in text)
+
+
+def load_features(dataset):
+    if load_features.cache:
+        return load_features.cache
+    import _pickle as cPickle
+    load_features.cache = cPickle.load(open('resources/' + dataset + '/features.pkl', 'rb'))
+    return load_features.cache
+
+
+load_features.cache = None
+
+
+def draw_bar_chart(data, y_label, title):
+    import matplotlib.pyplot as plt;
+    plt.rcdefaults()
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    objects = data.keys()
+    y_pos = np.arange(len(objects))
+    performance = data.values()
+
+    plt.bar(y_pos, performance, align='center', alpha=0.5)
+    plt.xticks(y_pos, objects)
+    plt.ylabel(y_label)
+    plt.title(title)
+
+    plt.show()

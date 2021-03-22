@@ -1,9 +1,8 @@
 from sklearn import tree
-from utilities import *
+import utilities
 from sklearn.model_selection import train_test_split
 #import matplotlib.pyplot as plt
 import numpy as np
-import _pickle as cPickle
 from Summ import summ
 from rouge import Rouge
 import json, sys
@@ -11,6 +10,10 @@ from sklearn import linear_model
 from sklearn import metrics
 from sklearn.metrics import mean_squared_error, r2_score, confusion_matrix, recall_score
 from sklearn.svm import SVR
+from sklearn.naive_bayes import *
+import doc_per as farsi
+import hazm
+
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
@@ -55,17 +58,29 @@ def evaluate_summarizer(clf, dataset, used_features, remove_stopwords=False):
         best_score = empty_score
         for ref_key in gold_summaries:
             ref = gold_summaries[ref_key]
-            ref_len = len(sent_tokenize(ref))
+            ref_len = len(hazm.sent_tokenize(ref))
             if remove_stopwords:
-                ref = remove_stop_words(ref)
+                ref = farsi.remove_stop_words_and_puncs(ref)
             summary = summ(text, clf, key[4:6], used_features, ref_len)
+
             lines = [s + "\n\n" for s in summary]
             summary = " ".join(summary)
             if remove_stopwords:
-                summary = remove_stop_words(summary)
+                summary = farsi.remove_stop_words_and_puncs(summary)
             #if len(summary) != len(ref):
             #    diff_summs += 1
-            scores = rouge.get_scores(ref, summary)[0]
+            if len(summary) == 0:
+                continue
+            try:
+                scores = rouge.get_scores(ref, summary)[0]
+            except:
+                print(ref)
+                print(summary)
+                o = 1
+                o += 1
+            """f_file = open('/tmp/summaries/' + ref_key + str(scores["rouge-1"]["f"]) + '.txt', '+w')
+            f_file.writelines(lines)
+            f_file.close()"""
             best_score = best_rouge_f(best_score, scores)
    
         for test_type in best_score:
@@ -79,7 +94,7 @@ def evaluate_summarizer(clf, dataset, used_features, remove_stopwords=False):
     return avg_scores
 
 
-def evaluate_model(model, X_test, X_balanced, y_test, y_balanced, labels_test, labels_balanced):
+def evaluate_model(model, X_test, X_balanced, y_test, y_balanced, labels_test, labels_balanced, is_regressor=True):
     y_pred = model.predict(X_test)
 
     y_pred_train = model.predict(X_balanced)
@@ -101,18 +116,20 @@ def evaluate_model(model, X_test, X_balanced, y_test, y_balanced, labels_test, l
     print("MSE on train: %.5f"  % result['train_mse'])
     print('R2 score on train: %.5f' % result['train_r2'])
 
+    if not is_regressor:
+        predicted_labels = y_pred
+        predicted_labels_train = y_pred_train
+    else:
+        predicted_labels = [True if y > utilities.similarity_threshold else False for y in y_pred]
+        predicted_labels_train = [True if y > utilities.similarity_threshold else False for y in y_pred_train]
+
     print("Confusion Matrix on test:")
-    print_cm(confusion_matrix(labels_test, [True if y > similarity_threshold else False for y in y_pred]), labels=['T', 'F'])
+    utilities.print_cm(confusion_matrix(labels_test, predicted_labels), labels=['F', 'T'])
 
     print("Confusion Matrix on train:")
-    print_cm(confusion_matrix(labels_balanced, [True if y > similarity_threshold else False for y in y_pred_train]), labels=['T', 'F'])
+    utilities.print_cm(confusion_matrix(labels_balanced, predicted_labels_train), labels=['F', 'T'])
 
     return result
-
-
-def export_model(model, export_name):
-    with open(export_name + '.pkl', 'wb') as fid:
-        cPickle.dump(model, fid)
 
 
 def best_rouge_f(score1, score2):
@@ -123,57 +140,49 @@ def best_rouge_f(score1, score2):
     return score1
 
 
-def run_experiments_without_cross_validation(model_names):
-    valid_features = ['cue_words',
-                      #'cosine_position', 'tfisf', 'relative_len',
-                      # 'tf',
-                      'pos_ve_ratio', 'pos_aj_ratio', 'pos_nn_ratio', 'pos_av_ratio',
-                      #'len',
-                      'position'
-                      #'doc_words', 'doc_sens',# 'doc_parag', # 'category',
-                      # 'doc_verbs', 'doc_adjcs', 'doc_advbs', 'doc_nouns',
-                      #'nnf_isnnf', 'vef_isvef', 'ajf_isajf', 'avf_isavf', 'nuf_isnuf',
-                      #'political', 'social', 'sport', 'culture', 'economy', 'science'
-                      ]
-    features, targets, labels = load_dataset('features.json')
+def run_experiments_without_cross_validation(model_names, features_to_use):
+    dataset_features = utilities.load_features('pasokh')
+    features, targets, labels, documents, all_vec = utilities.split_dataset(dataset_features, features_to_use, 0.40)
 
-    X_normal = np.array(features)
-    X_normal = select_features(valid_features, X_normal)
-    # X_normal = StandardScaler().fit_transform(dataset[0])
+    X_normal = np.array(all_vec)
 
-    normalize_dataset(X_normal, valid_features, 'learn')
+    utilities.normalize_dataset(X_normal, features_to_use, 'learn')
 
-    X_train, X_test, y_train, y_test, labels_train, labels_test = \
-        train_test_split(X_normal, targets, labels,
-                         test_size=0.25)
+    X_train = np.array(features['train'])
+    X_test = np.array(features['test'])
+    y_train = np.array(targets['train'])
+    y_test = np.array(targets['test'])
+    labels_train = np.array(labels['train'])
+    labels_test = np.array(labels['test'])
 
     print("Dataset size: {}".format(len(X_normal)))
-    print("Number of True/False labels: {}/{}".format(sum(labels), sum(1 for i in labels if not i)))
+    #print("Number of True/False labels: {}/{}".format(sum(labels), sum(1 for i in labels if not i)))
     (X_balanced, y_balanced, labels_balanced) = (X_train, y_train, labels_train)
-    #X_balanced, y_balanced, labels_balanced = balance_dataset(X_train, y_train, labels_train, 3)
+    #X_balanced, y_balanced, labels_balanced = utilities.balance_dataset(X_train, y_train, labels_train, 3)
     print("Train set size: {}".format(len(X_balanced)))
     print("Number of True/False labels: {}/{}".format(sum(labels_balanced), sum(1 for i in labels_balanced if not i)))
     print("Test set size: {}".format(len(X_test)))
     print("Number of True/False labels: {}/{}".format(sum(labels_test), sum(1 for i in labels_test if not i)))
     print("Used features: {}".format(len(X_balanced[0])))
 
-    dataset_json = json.loads(read_file('resources/pasokh/all.json'))
+    dataset_json = json.loads(utilities.read_file('resources/pasokh/all.json'))
+    is_regressor = True
     for model_type in model_names:
         print('**********************' + model_type + '**********************')
         if model_type == 'dtr':
             # max_depth=6
-            regr = tree.DecisionTreeRegressor(max_depth=6)
+            regr = tree.DecisionTreeRegressor()
             regr = regr.fit(X_balanced, y_balanced)
             export_name = 'dtr'
         elif model_type == 'linear':
-            regr = linear_model.LinearRegression()
+            regr = linear_model.LinearRegression(normalize=True)
             # Train the model using the training sets
             regr.fit(X_balanced, y_balanced)
             # The coefficients
             print('Coefficients: \n', regr.coef_)
             export_name = 'linear'
         elif model_type == 'svm':
-            regr = SVR(verbose=True, epsilon=0.001, gamma='auto', tol=.00001)
+            regr = SVR(verbose=True, epsilon=0.00001, gamma='auto', tol=.00001)
             # Train the model using the training sets
             regr.fit(X_balanced, y_balanced)
             # The coefficients
@@ -184,18 +193,30 @@ def run_experiments_without_cross_validation(model_names):
             export_name = 'dummy'
         elif model_type == 'ideal':
             from IdealRegressor import IdealRegressor
-            regr = IdealRegressor(X_normal, targets)
+            regr = IdealRegressor(X_train, y_train)
+            regr.fit(X_test, y_test)
             export_name = 'ideal'
+        elif model_type == 'nb':
+            # from sklearn import svm
+            # regr = svm.SVC(gamma='scale').fit(X_train, labels_train)
+            from sklearn.naive_bayes import ComplementNB, GaussianNB
+            from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+            from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+
+            regr = ComplementNB(alpha=1)
+            regr.fit(X_train, labels_train)
+            is_regressor = False
+            export_name = 'nb'
         else:
             print("Regression type is undefined:" + model_type)
             continue
         # Make predictions using the testing set
 
-        model_results = evaluate_model(regr, X_test, X_balanced, y_test, y_balanced, labels_test, labels_balanced)
+        model_results = evaluate_model(regr, X_test, X_balanced, y_test, y_balanced, labels_test, labels_balanced, is_regressor)
 
         print('Summarizing dataset and evaluating Rouge...')
-        rouge_scores = evaluate_summarizer(regr, dataset_json, valid_features, True)
-        print_rouges(rouge_scores)
+        rouge_scores = evaluate_summarizer(regr, dataset_json, features_to_use, True)
+        utilities.print_rouges(rouge_scores)
         print('*****************************************************************************')
     return rouge_scores, model_results
 
@@ -213,7 +234,7 @@ def run_experiments(model_names):
                       'nnf_isnnf', 'vef_isvef', 'ajf_isajf', 'avf_isavf', 'nuf_isnuf',
                       'political', 'social', 'sport', 'culture', 'economy', 'science'
                       ]
-    features, targets, labels, documents, all_vec = load_dataset_splitted('features.json')
+    features, targets, labels, documents, all_vec = load_dataset_splitted('features.json', learning_features)
 
     X_normal = np.array(all_vec)
     X_normal = select_features(valid_features, X_normal)
@@ -246,7 +267,7 @@ def run_experiments(model_names):
 
     dataset_json = json.loads(read_file('resources/pasokh/all.json'))
     test_documents = {key: dataset_json[key] for key in documents['test']+documents['train']}
-
+    is_regressor = True
     for model_type in model_names:
         print('**********************' + model_type + '**********************')
         if model_type == 'dtr':
@@ -275,17 +296,28 @@ def run_experiments(model_names):
             from IdealRegressor import IdealRegressor
             regr = IdealRegressor(X_normal, targets)
             export_name = 'ideal'
+        elif model_type == 'nb':
+            # from sklearn import svm
+            # regr = svm.SVC(gamma='scale').fit(X_train, labels_train)
+            from sklearn.naive_bayes import ComplementNB, GaussianNB
+            from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+            from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+
+            regr = ComplementNB(alpha=0.015)
+            regr.fit(X_train, labels_train)
+            is_regressor = False
+            export_name = 'nb'
         else:
             print("Regression type is undefined:" + model_type)
             continue
         # Make predictions using the testing set
 
-        model_results = evaluate_model(regr, X_test, X_balanced, y_test, y_balanced, labels_test, labels_balanced)
+        model_results = evaluate_model(regr, X_test, X_balanced, y_test, y_balanced, labels_test, labels_balanced, is_regressor)
 
         print('Summarizing dataset and evaluating Rouge...')
 
-        rouge_scores = evaluate_summarizer(regr, test_documents, valid_features, True)
-        print_rouges(rouge_scores)
+        rouge_scores = evaluate_summarizer(regr, test_documents, valid_features)
+        utilities.print_rouges(rouge_scores)
         print('*****************************************************************************')
     return rouge_scores, model_results
 

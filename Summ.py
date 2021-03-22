@@ -3,14 +3,15 @@ from GenerateDataset import *
 import sys
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import doc_per as farsi
 
 def sentences_features(text, category):
-    feature_set = document_feature_set(text, category)
-    all_words = word_tokenize(text)
-    all_words = remove_stop_words(all_words)
+    feature_set = farsi.document_feature_set(text, category)
+    all_words = farsi.word_tokenize(text)
+    all_words = farsi.remove_stop_words_and_puncs(all_words)
     word_freq = FreqDist(all_words)
     #graph_model = build_graph_model()
-    sentences = sent_tokenize(text)
+    sentences = hazm.sent_tokenize(text)
     doc_features = {
         'doc_words': len(all_words),
         'doc_sens': len(sentences),
@@ -20,7 +21,7 @@ def sentences_features(text, category):
     for position in range(len(sentences)):
         sen = sentences[position]
         sen = normalizer.normalize(sen)
-        words = remove_stop_words(word_tokenize(sen))
+        words = remove_stop_words_and_puncs(word_tokenize(sen))
         if len(words) < 1: continue
         features = doc_features.copy()
         add_features(features, words, sentences, word_freq, position)
@@ -30,7 +31,7 @@ def sentences_features(text, category):
 
 
 def summ(text, clf, category, used_feature_names, cutoff=None):
-    feature_set, sentences = document_feature_set(text, category)
+    feature_set, sentences = farsi.document_feature_set(text, category)
     if cutoff:
         summary_len = cutoff
     else:
@@ -46,7 +47,7 @@ def summ(text, clf, category, used_feature_names, cutoff=None):
         row = []
         for attr in used_feature_names:
             if attr == 'category':
-                row.append(category_map[sen[attr]])
+                row.append(pasokh_category_mapping(sen[attr]))
             else:
                 row.append(sen[attr])
         feature_set_filtered.append(row)
