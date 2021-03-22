@@ -74,6 +74,25 @@ def inverse_sentence_freq(term, sentences):
             sentences_containing = sentences_containing + 1
     if sentences_containing == 0:
         sentences_containing = 1
+    return math.log(len(sentences)/sentences_containing)
+
+
+def inverse_sentence_freq_old(term, sentences):
+    """
+    Computes ISF
+    Until 06/26/2020, this variation of isf was used in our code, however I couldn't remember why we had devised such a
+    formula and I couldn't find it in any reference! so I suffixed it with _old and put here for later reference.
+    A more standard formula is used now in inverse_sentence_freq()
+    Args:
+        term: the word for which isf will be calculated
+        sentences: array of all sentences in the text, tokenized and removed stop words
+    """
+    sentences_containing = 0
+    for sen in sentences:
+        if term in sen:
+            sentences_containing = sentences_containing + 1
+    if sentences_containing == 0:
+        sentences_containing = 1
     return 1 - (math.log(sentences_containing) / math.log(len(sentences)))
 
 
@@ -82,7 +101,7 @@ def tf_isf_score(sentence_words, sentences, word_freq):
     for sen_word in sentence_words:
         sen_score = sen_score + word_freq[
             sen_word] * inverse_sentence_freq(sen_word, sentences)
-    return sen_score
+    return sen_score/len(sentence_words)
 
 
 def linear_poition_score(position, total_sentences):
