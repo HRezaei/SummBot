@@ -143,12 +143,12 @@ def cosine_similarity(vec1, vec2):
         return float(numerator) / denominator
 
 
-def cue_words(sentence_words, cue_words):
+def cue_words(sentence_words, cue_words_list):
     '''
 
     '''
     output = 0
     for word in sentence_words:
-        if word in cue_words:
+        if word in cue_words_list:
             output += 1
     return output

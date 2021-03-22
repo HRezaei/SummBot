@@ -35,6 +35,13 @@ def read_file(path):
     return content
 
 
+def write_file(path, data):
+    file = open(path, "w+")
+    output = file.write(data)
+    file.close()
+    return output
+
+
 def load_dataset(path):
     dataset = json.loads(read_file(path))
     features = []
@@ -251,6 +258,22 @@ def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=
                 cell = cell if cm[i, j] > hide_threshold else empty_cell
             print(cell, end=" ")
         print()
+
+    tp = cm[1, 1]
+    tn = cm[0, 0]
+    tn_percent = 100 * tn / sum(cm[0])
+    tp_percent = 100 * tp / sum(cm[1])
+    fp = cm[0, 1]
+    fn = cm[1, 0]
+    total = sum(cm[0]) + sum(cm[1])
+    accuracy = 100 * (tp + tn) / total
+    precision = 100 * tp / (tp + fp)
+    recall = 100 * tp / (tp + fn)
+    print('True Positives: {:.2f}%'.format(tp_percent))
+    print('True Negatives: {:.2f}%'.format(tn_percent))
+    print('Accuracy: {:.2f}%'.format(accuracy))
+    print('Precision: {:.2f}%'.format(precision))
+    print('Recall: {:.2f}%'.format(recall))
 
 
 def print_rouges(rouges):

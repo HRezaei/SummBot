@@ -152,8 +152,8 @@ rouge = Rouge()
 #farsnet = importEFromPaj("resources/farsnet/synset_related_to.paj")
 
 
-normalizer = Normalizer()
-stemmer = Stemmer()
+#normalizer = Normalizer()
+#stemmer = Stemmer()
 
 
 def generate_dataset():    
@@ -168,5 +168,5 @@ def generate_dataset():
     write_dataset_csv(feats, 'dataset.csv')
 
 
-if len(sys.argv) > 1 and sys.argv[1] == 'all':
-    generate_dataset()
+#if len(sys.argv) > 1 and sys.argv[1] == 'all':
+#    generate_dataset()
