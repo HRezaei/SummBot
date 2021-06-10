@@ -1,6 +1,6 @@
 configparser==3.7.3
 cycler==0.10.0
-Django==2.1.7
+Django==2.2.24
 hazm==0.7.0
 kiwisolver==1.1.0
 libwapiti==0.2.1
